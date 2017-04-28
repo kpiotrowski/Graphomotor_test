@@ -1,4 +1,7 @@
 import struct
+import numpy as np
+import colorsys
+from PIL import Image
 
 def read(filename):
     """
@@ -24,7 +27,8 @@ def read(filename):
                 "height": "int"
             },
             ...
-        ]
+        ],
+        "image": Image
     }
     :param filename: path to the file
     """
@@ -46,3 +50,34 @@ def read(filename):
         for i,v in enumerate(['operation_num', 'surgery', 'gender', 'arm', 'hemisphere', 'treatment']):
             result[v] = str(name_tags[2][i])
     return result
+
+
+def create_image(gdata, scale=20):
+    max_x, max_y = 0, 0
+    min_x, min_y = -1, -1
+    max_f = 0
+    for i in gdata['data']:
+        if i['x'] > max_x: max_x = i['x']
+        if i['y'] > max_y: max_y = i['y']
+        if i['x'] < min_x or min_x == -1: min_x = i['x']
+        if i['y'] < min_y  or min_y == -1: min_y = i['y']
+        if i['force'] > max_f: max_f = i['force']
+
+    w,h = int((max_x)/scale)+2, int((max_y)/scale)+2
+    data = np.zeros((w, h, 3), dtype=np.float)
+    for i in gdata['data']:
+        if i['force'] > 0:
+            X,Y = i['x']/scale, i['y']/scale
+            if int(X) != X: Xt = [int(X), int(X)+1]
+            else: Xt = [int(X)]
+            if int(Y) != Y: Yt = [int(Y), int(Y)+1]
+            else: Yt = [int(Y)]
+            for x in Xt:
+                for y in Yt:
+                    color = 0.33 - (0.33 * i['force']/max_f)
+                    data[x,y] = [color, 1, 1]
+
+
+    gdata["image"] = data
+    return gdata
+
