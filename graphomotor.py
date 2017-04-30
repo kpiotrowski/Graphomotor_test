@@ -22,7 +22,8 @@ def read(filename):
                 "y"     : "int",
                 "force" : "int",
                 "width" : "int",
-                "height": "int"
+                "height": "int",
+                * "speed" : float - wyliczone dla niektórch punktów
             },
             ...
         ],
@@ -30,9 +31,11 @@ def read(filename):
         "min_force": int,
         "max_force": int,
         "avg_force:" float,
-        "max_speed": float,         #TODO
-        "avg_speed": float,         #TODO
+        "max_speed": float,
+        "avg_speed": float,         
         "line_brakes": int,
+        "avg_width": int,
+        "avg_height": int,
         "pos_x": (min, max),
         "pos"y": (min, max),
         "line_len": float,
@@ -41,11 +44,14 @@ def read(filename):
             {
                 "type": string,     #TODO
                 "max_force": int,   #TODO
+                "min_force": int,   #TODO
                 "avg_force": float, #TODO
                 "line_len": float,  #TODO
                 "max_speed": float, #TODO
                 "avg_speed": float, #TODO
-                "line_brakes": int  #TODO
+                "line_brakes": int, #TODO
+                "avg_width": int,   #TODO
+                "avg_height": int   #TODO
             },
             ...
         ]
@@ -72,17 +78,20 @@ def read(filename):
     return set_test_details(result)
 
 
-def set_test_details(gdata):
+def set_test_details(gdata, speed_points = 50):
     max_x, max_y = 0, 0
     min_x, min_y = -1, -1
-    max_f = 0
-    avg_f = [0, 0]
+    max_f, avg_f = 0, [0, 0]
+    avg_w, avg_h = 0, 0
+    speed_l, speed_t0, speed_t1 = 0, 0, 0
+    avg_speed = [0, 0]
     prev, state = None, None
 
     gdata['line_len'] = 0
     gdata['line_brakes'] = 0
     gdata['min_force'] = -1
-    for i in gdata['data']:
+    gdata['max_speed'] = 0
+    for idx, i in enumerate(gdata['data']):
         if i['x'] > max_x: max_x = i['x']
         if i['y'] > max_y: max_y = i['y']
         if i['x'] < min_x or min_x == -1: min_x = i['x']
@@ -96,19 +105,36 @@ def set_test_details(gdata):
             if prev is not None and prev['force']>0:
                 len = np.sqrt(pow(prev['x'] - i['x'], 2) + pow(prev['y'] - i['y'], 2))
                 gdata['line_len'] += len
+            avg_w += i['width']
+            avg_h += i['height']
+
+        if speed_t0 == 0: speed_t0 = i['time']
+        if idx>0 and idx % speed_points == 0:
+            speed_t1 = i['time']
+            speed = (gdata['line_len'] - speed_l)/(speed_t1-speed_t0)
+            speed_l = gdata['line_len']
+            speed_t0 = i['time']
+            if speed > gdata['max_speed']:
+                gdata['max_speed'] = speed
+            i['speed'] = speed
+            avg_speed[0] += speed
+            avg_speed[1] += 1
+        prev = i
+        # LINE BRAKES
         if state is not None:
             if state == 0 and i['force'] > 0: state = 1
             if state > 0 and i['force'] == 0:
                 state = 0
                 gdata['line_brakes'] += 1
-
         if state is None: state = (i['force'] > 0)
-        prev = i
 
+    gdata['avg_speed'] = avg_speed[0]/avg_speed[1]
     gdata['max_force'] = max_f
     gdata['pos_x'] = (min_x, max_x)
     gdata['pos_y'] = (min_y, max_y)
     gdata['avg_force'] = avg_f[0]/avg_f[1]
+    gdata['avg_width'] = avg_w/avg_f[1]
+    gdata['avg_height'] = avg_h/avg_f[1]
     return gdata
 
 def create_image(gdata, scale=20):
@@ -116,7 +142,7 @@ def create_image(gdata, scale=20):
     Tworzy obraz w przestrzeni hsv przedstawiający przegieb testu grafomotorycznego.
     Wsp scale oznacza jka bardzo obraz ma być przeskalowany w stosunku do rozmiaru danych wejściowych
     Siła nacisku reprezentowana jest jako barwa (H): zielony - zółty - czerwony : słaba - średnia - wysoka
-    Prędkość rysowania reprezentowana jest jako (V): większa wartość to większa prędkość                            #TODO
+    Prędkość rysowania reprezentowana jest jako (V): większa wartość to większa prędkość
     Kąty rysowania reprezentowane jako wektory wychodzące                                                           #TODO
     :param gdata: dict
     :param scale: int
@@ -125,6 +151,7 @@ def create_image(gdata, scale=20):
     # TODO draw vectors
     w,h = int((gdata['pos_x'][1])/scale)+2, int((gdata['pos_y'][1])/scale)+2
     data = np.zeros((w, h, 3), dtype=np.float)
+    cur_speed = gdata['avg_speed']
     for i in gdata['data']:
         if i['force'] > 0:
             X,Y = i['x']/scale, i['y']/scale
@@ -134,8 +161,10 @@ def create_image(gdata, scale=20):
             else: Yt = [int(Y)]
             for x in Xt:
                 for y in Yt:
+                    if 'speed' in i:
+                        cur_speed = i['speed']
                     color = 0.350 - (0.350 * i['force']/gdata['max_force'])
-                    data[x,y] = [color, 1, 1]
+                    data[x,y] = [color, 1, cur_speed/gdata['max_speed']]
 
 
     gdata["image"] = data

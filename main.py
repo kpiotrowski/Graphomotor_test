@@ -14,10 +14,12 @@ if __name__ == "__main__":
     print("Maksymalny nacisk: "+str(data["max_force"]))
     print("Minimalny nacisk: "+str(data['min_force']))
     print("Średni nacisk: "+str(data["avg_force"]))
-    #"max_speed": float,  # TODO
-    #"avg_speed": float,  # TODO
+    print("Maksymalna prędkość: "+str(data['max_speed']))
+    print("Średnia prędkość: "+str(data['avg_speed']))
     print("Oderwania: " +str(data["line_brakes"]))
     print("Droga rysowania: "+str(data["line_len"]))
-    plt.show()
+    print("Średnia szerokość kątowa: "+str(data["avg_width"]))
+    print("Średnia wysokość kątowa: "+str(data["avg_height"]))
 
-    print(len(data['data']))
+
+    plt.show()
