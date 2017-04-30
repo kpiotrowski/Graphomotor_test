@@ -1,7 +1,5 @@
-import struct
 import numpy as np
-import colorsys
-from PIL import Image
+
 
 def read(filename):
     """
@@ -28,7 +26,29 @@ def read(filename):
             },
             ...
         ],
-        "image": Image
+        "min_force": int,
+        "min_force": int,
+        "max_force": int,
+        "avg_force:" float,
+        "max_speed": float,         #TODO
+        "avg_speed": float,         #TODO
+        "line_brakes": int,
+        "pos_x": (min, max),
+        "pos"y": (min, max),
+        "line_len": float,
+        "image": Image in hsv,
+        "figures": [                #TODO
+            {
+                "type": string,     #TODO
+                "max_force": int,   #TODO
+                "avg_force": float, #TODO
+                "line_len": float,  #TODO
+                "max_speed": float, #TODO
+                "avg_speed": float, #TODO
+                "line_brakes": int  #TODO
+            },
+            ...
+        ]
     }
     :param filename: path to the file
     """
@@ -49,21 +69,61 @@ def read(filename):
         result['patient_id'] = int(name_tags[1])
         for i,v in enumerate(['operation_num', 'surgery', 'gender', 'arm', 'hemisphere', 'treatment']):
             result[v] = str(name_tags[2][i])
-    return result
+    return set_test_details(result)
 
 
-def create_image(gdata, scale=20):
+def set_test_details(gdata):
     max_x, max_y = 0, 0
     min_x, min_y = -1, -1
     max_f = 0
+    avg_f = [0, 0]
+    prev, state = None, None
+
+    gdata['line_len'] = 0
+    gdata['line_brakes'] = 0
+    gdata['min_force'] = -1
     for i in gdata['data']:
         if i['x'] > max_x: max_x = i['x']
         if i['y'] > max_y: max_y = i['y']
         if i['x'] < min_x or min_x == -1: min_x = i['x']
-        if i['y'] < min_y  or min_y == -1: min_y = i['y']
+        if i['y'] < min_y or min_y == -1: min_y = i['y']
         if i['force'] > max_f: max_f = i['force']
+        if i['force'] > 0:
+            if gdata['min_force'] == -1 or gdata['min_force'] > i['force']:
+                gdata['min_force'] = i['force']
+            avg_f[0] += i['force']
+            avg_f[1] += 1
+            if prev is not None and prev['force']>0:
+                len = np.sqrt(pow(prev['x'] - i['x'], 2) + pow(prev['y'] - i['y'], 2))
+                gdata['line_len'] += len
+        if state is not None:
+            if state == 0 and i['force'] > 0: state = 1
+            if state > 0 and i['force'] == 0:
+                state = 0
+                gdata['line_brakes'] += 1
 
-    w,h = int((max_x)/scale)+2, int((max_y)/scale)+2
+        if state is None: state = (i['force'] > 0)
+        prev = i
+
+    gdata['max_force'] = max_f
+    gdata['pos_x'] = (min_x, max_x)
+    gdata['pos_y'] = (min_y, max_y)
+    gdata['avg_force'] = avg_f[0]/avg_f[1]
+    return gdata
+
+def create_image(gdata, scale=20):
+    """
+    Tworzy obraz w przestrzeni hsv przedstawiający przegieb testu grafomotorycznego.
+    Wsp scale oznacza jka bardzo obraz ma być przeskalowany w stosunku do rozmiaru danych wejściowych
+    Siła nacisku reprezentowana jest jako barwa (H): zielony - zółty - czerwony : słaba - średnia - wysoka
+    Prędkość rysowania reprezentowana jest jako (V): większa wartość to większa prędkość                            #TODO
+    Kąty rysowania reprezentowane jako wektory wychodzące                                                           #TODO
+    :param gdata: dict
+    :param scale: int
+    :return: dict
+    """
+    # TODO draw vectors
+    w,h = int((gdata['pos_x'][1])/scale)+2, int((gdata['pos_y'][1])/scale)+2
     data = np.zeros((w, h, 3), dtype=np.float)
     for i in gdata['data']:
         if i['force'] > 0:
@@ -74,7 +134,7 @@ def create_image(gdata, scale=20):
             else: Yt = [int(Y)]
             for x in Xt:
                 for y in Yt:
-                    color = 0.33 - (0.33 * i['force']/max_f)
+                    color = 0.350 - (0.350 * i['force']/gdata['max_force'])
                     data[x,y] = [color, 1, 1]
 
 
