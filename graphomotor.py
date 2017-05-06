@@ -2,6 +2,33 @@ from __future__ import print_function
 import numpy as np
 import pprint
 
+FIG_TYPES = {
+    'LINE_1': {
+        'color': [0.1,1,1]
+    },
+    'LINE_2': {
+        'color': [0.2,1,1]
+    },
+    'BROKEN_LINE': {
+        'color': [0.3,1,1]
+    },
+    'CIRCLE_L': {
+        'color': [0.4,1,1]
+    },
+    'CIRCLE_R': {
+        'color': [0.5,1,1]
+    },
+    'ZIGZAG': {
+        'color': [0.6,1,1]
+    },
+    'SPIRAL_L': {
+        'color': [0.7,1,1]
+    },
+    'SPIRAL_R': {
+        'color': [0.8,1,1]
+    }
+}
+
 def read(filename):
     """
     return dict:
@@ -44,8 +71,8 @@ def read(filename):
         "figures": [                #TODO
             {
                 "type": string,     #TODO
-                "pos_x": [min, min],#TODO
-                "pos_y": [max, max],#TODO
+                "pos_x": [min, max],#TODO
+                "pos_y": [min, max],#TODO
                 "max_force": int,   #TODO
                 "min_force": int,   #TODO
                 "avg_force": float, #TODO
@@ -95,16 +122,11 @@ def set_test_details(gdata, speed_points=50):
     gdata['min_force'] = -1
     gdata['max_speed'] = 0
     for idx, i in enumerate(gdata['data']):
-        if i['x'] > max_x:
-            max_x = i['x']
-        if i['y'] > max_y:
-            max_y = i['y']
-        if i['x'] < min_x or min_x == -1:
-            min_x = i['x']
-        if i['y'] < min_y or min_y == -1:
-            min_y = i['y']
-        if i['force'] > max_f:
-            max_f = i['force']
+        if i['x'] > max_x: max_x = i['x']
+        if i['y'] > max_y: max_y = i['y']
+        if i['x'] < min_x or min_x == -1: min_x = i['x']
+        if i['y'] < min_y or min_y == -1: min_y = i['y']
+        if i['force'] > max_f: max_f = i['force']
         if i['force'] > 0:
             if gdata['min_force'] == -1 or gdata['min_force'] > i['force']:
                 gdata['min_force'] = i['force']
@@ -115,28 +137,24 @@ def set_test_details(gdata, speed_points=50):
             avg_w += i['width']
             avg_h += i['height']
 
-        if speed_t0 == 0:
-            speed_t0 = i['time']
+        if speed_t0 == 0: speed_t0 = i['time']
         if idx > 0 and idx % speed_points == 0:
             speed_t1 = i['time']
             speed = (gdata['line_len'] - speed_l) / (speed_t1 - speed_t0)
             speed_l = gdata['line_len']
             speed_t0 = i['time']
-            if speed > gdata['max_speed']:
-                gdata['max_speed'] = speed
+            if speed > gdata['max_speed']: gdata['max_speed'] = speed
             i['speed'] = speed
             avg_speed[0] += speed
             avg_speed[1] += 1
         prev = i
         # LINE BRAKES
         if state is not None:
-            if state == 0 and i['force'] > 0:
-                state = 1
+            if state == 0 and i['force'] > 0: state = 1
             if state > 0 and i['force'] == 0:
                 state = 0
                 gdata['line_brakes'] += 1
-        if state is None:
-            state = (i['force'] > 0)
+        if state is None: state = (i['force'] > 0)
 
     gdata['avg_speed'] = avg_speed[0] / avg_speed[1]
     gdata['max_force'] = max_f
@@ -148,7 +166,7 @@ def set_test_details(gdata, speed_points=50):
     return gdata
 
 
-def find_figures_merge(figures, small_merge=40):
+def find_figures_merge(figures, small_merge=30):
     def merge(prev, next):
         next['pos_x'] = [min(next['pos_x'][0], prev['pos_x'][0]),
                         max(next['pos_x'][1], prev['pos_x'][1])]
@@ -157,31 +175,75 @@ def find_figures_merge(figures, small_merge=40):
         next['points'] += prev['points']
         next['zeros_ahead'] = prev['zeros_ahead']
 
+    def check_the_same_area(prev, fig, m = 50):
+        if (fig['pos_x'][0]-m <= prev['pos_x'][0] <= fig['pos_x'][1]+m) and (fig['pos_y'][0]-m <= prev['pos_y'][0] <= fig['pos_y'][1]+m):
+            return True
+        if (fig['pos_x'][0]-m <= prev['pos_x'][1] <= fig['pos_x'][1]+m) and (fig['pos_y'][0]-m <= prev['pos_y'][0] <= fig['pos_y'][1]+m):
+            return True
+        if (fig['pos_x'][0]-m <= prev['pos_x'][0] <= fig['pos_x'][1]+m) and (fig['pos_y'][0]-m <= prev['pos_y'][1] <= fig['pos_y'][1]+m):
+            return True
+        if (fig['pos_x'][0]-m <= prev['pos_x'][1] <= fig['pos_x'][1]+m) and (fig['pos_y'][0]-m <= prev['pos_y'][1] <= fig['pos_y'][1]+m):
+            return True
+        if (prev['pos_x'][0]-m <= fig['pos_x'][0] <= prev['pos_x'][1]+m) and (prev['pos_y'][0]-m <= fig['pos_y'][0] <= prev['pos_y'][1]+m):
+            return True
+        if (prev['pos_x'][0]-m <= fig['pos_x'][1] <= prev['pos_x'][1]+m) and (prev['pos_y'][0]-m <= fig['pos_y'][0] <= prev['pos_y'][1]+m):
+            return True
+        if (prev['pos_x'][0]-m <= fig['pos_x'][0] <= prev['pos_x'][1]+m) and (prev['pos_y'][0]-m <= fig['pos_y'][1] <= prev['pos_y'][1]+m):
+            return True
+        if (prev['pos_x'][0]-m <= fig['pos_x'][1] <= prev['pos_x'][1]+m) and (prev['pos_y'][0]-m <= fig['pos_y'][1] <= prev['pos_y'][1]+m):
+            return True
+        return False
+
+    def check_create_one_fig(prev, fig, avg_diff = 500, max_p = 400, max_d=300, max_s = 300):
+        avg_1 = (prev['pos_x'][1]+prev['pos_x'][0]) / 2
+        avg_2 = (fig['pos_x'][1]+fig['pos_x'][0]) / 2
+        dis = fig['pos_y'][0] - prev['pos_y'][1]
+
+
+        if abs(avg_2-avg_1) < avg_diff and \
+                (fig['points']<max_p or prev['points']<max_p or dis < max_d or prev['pos_x'][1]-prev['pos_x'][0] < max_s):
+            return True
+
+        print("DIFF: "+str(abs(avg_2-avg_1)))
+
+        return False
+
+    def small_fig(fig, small=1000):
+        if (fig['pos_x'][1]-fig['pos_x'][0])*(fig['pos_y'][1]-fig['pos_y'][0]) < small:
+            return True
+        return False
+
     #MAŁE PRZERWY
-    small_break = 1
-    while small_break:
-        small_break = 0
+    loop = 1
+    while loop:
+        loop = 0
         for idx, fig in enumerate(figures):
             if idx>0 and fig['zeros_ahead'] < small_merge:
                 merge(figures[idx-1], fig)
                 figures.pop(idx-1)
-                small_break = 1
+                loop = 1
                 break
-
-
-
-
     #ZAWIERAJĄ POKRYWAJĄCE SIĘ OBSZARY
-    same_area = 1
-    while same_area:
-        same_area = 0
-        prev = None
-        for fig in figures:
-            if prev is not None:
-                #TODO CHECK if fig and prev contains the same area. If yes merge it, set same_area = 1.
-                pass
-            prev = fig
-
+    loop = 1
+    while loop:
+        loop = 0
+        for idx, fig in enumerate(figures):
+            for i in range(1,idx+1):
+                if check_the_same_area(figures[idx-i], fig):
+                    merge(figures[idx-i], fig)
+                    figures.pop(idx-i)
+                    loop = 1
+                    break
+    figures = [x for x in figures if not small_fig(x)]
+    loop = 1
+    while loop:
+        loop = 0
+        for idx, fig in enumerate(figures):
+            if idx>0 and check_create_one_fig(figures[idx-1], fig):
+                merge(figures[idx - 1], fig)
+                figures.pop(idx - 1)
+                loop = 1
+                break
     return figures
 
 
@@ -253,12 +315,15 @@ def create_image(gdata, scale=30, show_speed=True, show_figure_box = False):
 
     if show_figure_box == True:
         for fig in gdata['figures']:
+            color = [1,0,1]
+            if 'type' in fig:
+                color = FIG_TYPES[fig['type']]['color']
             for y in fig['pos_y']:
                 for x in range(fig['pos_x'][0], fig['pos_x'][1]):
-                    data[int(x/scale),int(y/scale)] = [1,0,1]
+                    data[int(x/scale),int(y/scale)] = color
             for x in fig['pos_x']:
                 for y in range(fig['pos_y'][0], fig['pos_y'][1]):
-                    data[int(x/scale),int(y/scale)] = [1,0,1]
+                    data[int(x/scale),int(y/scale)] = color
 
     gdata["image"] = data
     return gdata
