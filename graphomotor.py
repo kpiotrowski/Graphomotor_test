@@ -1,25 +1,26 @@
 from __future__ import print_function
 import numpy as np
 import pprint
+from operator import itemgetter
 
 FIG_TYPES = {
     'LINE_1': {
-        'color': [0.1,1,1]
-    },
-    'LINE_2': {
-        'color': [0.2,1,1]
-    },
-    'BROKEN_LINE': {
-        'color': [0.3,1,1]
-    },
-    'CIRCLE_L': {
         'color': [0.4,1,1]
     },
-    'CIRCLE_R': {
+    'LINE_2': {
         'color': [0.5,1,1]
     },
-    'ZIGZAG': {
+    'BROKEN_LINE': {
         'color': [0.6,1,1]
+    },
+    'CIRCLE_L': {
+        'color': [0.2,1,1]
+    },
+    'CIRCLE_R': {
+        'color': [0.3,1,1]
+    },
+    'ZIGZAG': {
+        'color': [0.1,1,1]
     },
     'SPIRAL_L': {
         'color': [0.7,1,1]
@@ -194,22 +195,25 @@ def find_figures_merge(figures, small_merge=30):
             return True
         return False
 
-    def check_create_one_fig(prev, fig, avg_diff = 500, max_p = 400, max_d=300, max_s = 300):
+    def check_create_one_fig(prev, fig, avg_diff = 500, max_p = 400, max_d=400, max_s = 300):
         avg_1 = (prev['pos_x'][1]+prev['pos_x'][0]) / 2
         avg_2 = (fig['pos_x'][1]+fig['pos_x'][0]) / 2
-        dis = fig['pos_y'][0] - prev['pos_y'][1]
 
+        if prev['pos_y'][1] < fig['pos_y'][0]:
+            dis = fig['pos_y'][0] - prev['pos_y'][1]
+        else:
+            dis = prev['pos_y'][0] - fig['pos_y'][1]
 
         if abs(avg_2-avg_1) < avg_diff and \
-                (fig['points']<max_p or prev['points']<max_p or dis < max_d or prev['pos_x'][1]-prev['pos_x'][0] < max_s):
-            return True
-
-        print("DIFF: "+str(abs(avg_2-avg_1)))
+                 (fig['points']<max_p or prev['points']<max_p or dis < max_d or (prev['pos_x'][1]-prev['pos_x'][0] < max_s) ):
+             return True
 
         return False
 
-    def small_fig(fig, small=1000):
+    def small_fig(fig, small=1000, s_points = 10):
         if (fig['pos_x'][1]-fig['pos_x'][0])*(fig['pos_y'][1]-fig['pos_y'][0]) < small:
+            return True
+        if (fig['points']< s_points):
             return True
         return False
 
@@ -244,8 +248,36 @@ def find_figures_merge(figures, small_merge=30):
                 figures.pop(idx - 1)
                 loop = 1
                 break
+    figures = find_circles_spirals(figures)
+    not_recognized = [x for x in figures if 'name' not in x]
+    #TODO
+
     return figures
 
+
+def find_circles_spirals(figures):
+    squares = []
+    for idx, fig in enumerate(figures):
+        dim_x = fig['pos_x'][1]-fig['pos_x'][0]
+        dim_y = fig['pos_y'][1]-fig['pos_y'][0]
+        if 0.8 <= dim_x/dim_y <=1.2:
+            squares.append( (idx,fig['points']) )
+    squares = sorted(squares, key=itemgetter(1), reverse=True)
+    print(squares)
+    if figures[squares[0][0]]['pos_y'][0] < figures[squares[1][0]]['pos_y'][0]:
+        figures[squares[0][0]]['type'] = 'SPIRAL_L'
+        figures[squares[1][0]]['type'] = 'SPIRAL_R'
+    else:
+        figures[squares[0][0]]['type'] = 'SPIRAL_R'
+        figures[squares[1][0]]['type'] = 'SPIRAL_L'
+
+    if figures[squares[2][0]]['pos_y'][0] < figures[squares[3][0]]['pos_y'][0]:
+        figures[squares[2][0]]['type'] = 'CIRCLE_L'
+        figures[squares[3][0]]['type'] = 'CIRCLE_R'
+    else:
+        figures[squares[2][0]]['type'] = 'CIRCLE_R'
+        figures[squares[3][0]]['type'] = 'CIRCLE_L'
+    return figures
 
 def find_figures(gdata):
     groups = []
@@ -277,6 +309,7 @@ def find_figures(gdata):
     # TODO Find point groups which create figures
     # TODO recognize figures based on group dimensions and sth else?
     groups = find_figures_merge(groups)
+
     pprint.pprint(groups)
     print(len(groups))
     gdata['figures'] = groups
