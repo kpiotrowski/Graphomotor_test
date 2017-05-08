@@ -29,7 +29,7 @@ if __name__ == "__main__":
         "dane/40080000000 (M)/02_40080000000_10MRLP.mtb",   #14
         "dane/40080000000 (M)/03_40080000000_11MRLP.mtb"    #15
     ]
-    data = graphomotor.read(files[3])
+    data = graphomotor.read(files[15])
 
     data = graphomotor.find_figures(data)
     data = graphomotor.create_image(data, show_speed=True, show_figure_box=True)
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     print("Średni nacisk: "+str(data["avg_force"]))
     print("Maksymalna prędkość: "+str(data['max_speed']))
     print("Średnia prędkość: "+str(data['avg_speed']))
-    print("Oderwania: " +str(data["line_brakes"]))
+    print("Oderwania: " +str(data["line_breaks"]))
     print("Droga rysowania: "+str(data["line_len"]))
     print("Średnia szerokość kątowa: "+str(data["avg_width"]))
     print("Średnia wysokość kątowa: "+str(data["avg_height"]))
