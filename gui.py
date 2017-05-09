@@ -128,13 +128,12 @@ class MainGui(tk.Tk):
 
 
     def chooseFile(self):
-        # self.images.config(state="readonly")
         self.path = filedialog.askopenfilename()
         if self.path == () or self.path == "":
             self.path = ""
             self.data = None
             return
-        self.pathLabel.config(text=self.path)
+        self.pathLabel.config(text=self.path.split('/')[-1])
         self.data = graphomotor.read(self.path)
         self.data = graphomotor.find_figures(self.data)
         self.createImage()
@@ -170,8 +169,8 @@ class Graph(Figure):
     image = None
     canvas = None
 
-    def __init__(self, pane, image=None, figsize=(10,10), dpi=100):
-        Figure.__init__(self, figsize=figsize, dpi=dpi)
+    def __init__(self, pane, image=None, figsize=(100,100)):
+        Figure.__init__(self, figsize=figsize)
         self.canvas = FigureCanvasTkAgg(self, pane)
         self.plot = self.add_subplot(1, 1, 1)
         self.changePlot(image)
@@ -181,6 +180,12 @@ class Graph(Figure):
         self.image = image
         if(self.image is not None):
             self.plot.imshow(image)
+            # canvasSize = self.canvas.get_width_height()
+            # self.set_size_inches(canvasSize[0], self.get_figheight(), forward=True)
+            # self.set_figwidth(100)
+            # self.set_figheight(100)
+            self.tight_layout()
+            self.subplots_adjust(top=0.9)
         self.canvas.show()
 
 
