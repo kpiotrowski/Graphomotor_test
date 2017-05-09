@@ -60,28 +60,28 @@ class MainGui(tk.Tk):
 
         textWidth = 20
 
-        info1 = ttk.Labelframe(infoFrame, text="Maksymalny nacisk")
+        info1 = ttk.Labelframe(infoFrame, text="MAX nacisk")
         info1.grid(row=1, column=1, padx=padx/2.0, pady=pady/2.0, sticky=tk.W)
         self.infoText1 = tk.Label(info1, text="")
         self.infoText1.pack()
 
-        info2 = ttk.Labelframe(infoFrame, text="Minimalny nacisk")
+        info2 = ttk.Labelframe(infoFrame, text="MIN nacisk")
         info2.grid(row=2, column=1, padx=padx / 2.0, pady=pady / 2.0, sticky=tk.W)
         self.infoText2 = tk.Label(info2, text="")
         self.infoText2.pack()
 
-        info3 = ttk.Labelframe(infoFrame, text="Średni nacisk")
+        info3 = ttk.Labelframe(infoFrame, text="AVG nacisk")
         info3.grid(row=3, column=1, padx=padx / 2.0, pady=pady / 2.0, sticky=tk.W)
         self.infoText3 = tk.Label(info3, text="")
         self.infoText3.pack()
 
-        info4 = ttk.Labelframe(infoFrame, text="Maksymalna predkosc")
+        info4 = ttk.Labelframe(infoFrame, text="MAX predkosc")
         info4.grid(row=1, column=2, padx=padx / 2.0, pady=pady / 2.0, sticky=tk.W)
         self.infoText4 = tk.Label(info4, text="")
         self.infoText4.pack()
 
 
-        info5 = ttk.Labelframe(infoFrame, text="Średnia predkosc")
+        info5 = ttk.Labelframe(infoFrame, text="AVG predkosc")
         info5.grid(row=2, column=2, padx=padx / 2.0, pady=pady / 2.0, sticky=tk.W)
         self.infoText5 = tk.Label(info5, text="")
         self.infoText5.pack()
@@ -98,12 +98,12 @@ class MainGui(tk.Tk):
         self.infoText7.pack()
 
 
-        info8 = ttk.Labelframe(infoFrame, text="Średnia szerokość kątowa")
+        info8 = ttk.Labelframe(infoFrame, text="AVG szerokość kątowa")
         info8.grid(row=2, column=3, padx=padx / 2.0, pady=pady / 2.0, sticky=tk.W)
         self.infoText8 = tk.Label(info8, text="")
         self.infoText8.pack()
 
-        info9 = ttk.Labelframe(infoFrame, text="Średnia wysokość kątowa")
+        info9 = ttk.Labelframe(infoFrame, text="AVG wysokość kątowa")
         info9.grid(row=3, column=3, padx=padx / 2.0, pady=pady / 2.0, sticky=tk.W)
         self.infoText9 = tk.Label(info9, text="")
         self.infoText9.pack()
@@ -144,15 +144,15 @@ class MainGui(tk.Tk):
         self.data = graphomotor.create_image(self.data, show_speed=self.speedVar.get(), show_figure_box=self.boxesVar.get())
         self.graph.changePlot(hsv_to_rgb(self.data["image"]))
 
-        self.infoText1.config(text=self.data["max_force"])
-        self.infoText2.config(text=self.data['min_force'])
-        self.infoText3.config(text=self.data["avg_force"])
-        self.infoText4.config(text=self.data['max_speed'])
-        self.infoText5.config(text=self.data['avg_speed'])
+        self.infoText1.config(text="{0:.3f}".format(self.data["max_force"]))
+        self.infoText2.config(text="{0:.3f}".format(self.data['min_force']))
+        self.infoText3.config(text="{0:.3f}".format(self.data["avg_force"]))
+        self.infoText4.config(text="{0:.3f}".format(self.data['max_speed']))
+        self.infoText5.config(text="{0:.3f}".format(self.data['avg_speed']))
         self.infoText6.config(text=self.data["line_breaks"])
-        self.infoText7.config(text=self.data["line_len"])
-        self.infoText8.config(text=self.data["avg_width"])
-        self.infoText9.config(text=self.data["avg_height"])
+        self.infoText7.config(text="{0:.3f}".format(self.data["line_len"]))
+        self.infoText8.config(text="{0:.3f}".format(self.data["avg_width"]))
+        self.infoText9.config(text="{0:.3f}".format(self.data["avg_height"]))
         # print("Maksymalny nacisk: "+str(self.data["max_force"]))
         # print("Minimalny nacisk: "+str(self.data['min_force']))
         # print("Średni nacisk: "+str(self.data["avg_force"]))
