@@ -81,6 +81,8 @@ class MainGrid(BoxLayout):
         self.minimum_height = 600
 
 
+
+
 class MySplitter(Splitter):
     def __init__ (self,**kwargs):
         super(MySplitter,self).__init__(**kwargs)
@@ -93,19 +95,48 @@ class MySplitter(Splitter):
 
     def showImage(self,image):
         self.ax.imshow(image)
+        self.fig.canvas.draw()
 
 
     def on_touch_up(self, touch):
-        if self.collide_point(touch.pos[0], touch.pos[1]):
+        posX = touch.pos[0]
+        posY = touch.pos[1]
+        if self.collide_point(posX, posY):
             if 'right' in touch.button:
-                menu = MyPopUp(touch.pos[0], touch.pos[1], self, title="Plot", size_hint=(None, None))
+                menu = MyPopUp(posX, posY, self, title="Plot", size_hint=(None, None))
                 menu.open()
-            # elif "scrollup" in touch.button:
-            #     self.scat.scale *= 1.1
-            # elif "scrolldown" in touch.button:
-            #     self.scat.scale /= 1.1
-            # elif self.scat.collide_point(touch.pos[0], touch.pos[1]):
-            #     return self.scat.on_touch_up(touch)
+            elif "scrollup" in touch.button:
+                self.zoom(posX, posY, self.ax, self.fig, "scrollup")
+            elif "scrolldown" in touch.button:
+                self.zoom(posX, posY, self.ax, self.fig, "scrolldown")
+            
+
+    def zoom(self,posX,posY,ax,fig,event, baseScale = 1.5):
+        cur_xlim = ax.get_xlim()
+        cur_ylim = ax.get_ylim()
+        cur_xrange = (cur_xlim[1] - cur_xlim[0]) * .5
+        cur_yrange = (cur_ylim[1] - cur_ylim[0]) * .5
+        xmouse = posX  # get event x location
+        ymouse = posY  # get event y location
+        cur_xcentre = (cur_xlim[1] + cur_xlim[0]) * .5
+        cur_ycentre = (cur_ylim[1] + cur_ylim[0]) * .5
+        xdata = cur_xcentre + 0.25 * (xmouse - cur_xcentre)
+        ydata = cur_ycentre + 0.25 * (ymouse - cur_ycentre)
+        if event == 'scrollup':
+            # deal with zoom in
+            scale_factor = 1/baseScale
+        elif event == 'scrolldown':
+            # deal with zoom out
+            scale_factor = baseScale
+        else:
+            # deal with something that should never happen
+            scale_factor = 1
+        # set new limits
+        ax.set_xlim([xdata - cur_xrange*scale_factor,
+                     xdata + cur_xrange*scale_factor])
+        ax.set_ylim([ydata - cur_yrange*scale_factor,
+                     ydata + cur_yrange*scale_factor])
+        fig.canvas.draw() # force re-draw
 
 
 class MyAppGUI(App):
