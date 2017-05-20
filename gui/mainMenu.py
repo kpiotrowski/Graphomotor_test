@@ -91,14 +91,35 @@ class MySplitter(Splitter):
         self.fig.frameon = False
         self.ax.axis('off')
         self.add_widget(self.fig.canvas)
+        self.pressedLeft = None
+        self.rangeX = 1
 
 
     def showImage(self,image):
         self.ax.imshow(image)
+        cur_xlim = self.ax.get_xlim()
+        self.rangeX = cur_xlim[1]-cur_xlim[0]
         self.fig.canvas.draw()
 
 
     def on_touch_up(self, touch):
+        self.pressedLeft = None
+        self.fig.canvas.draw()
+
+    def on_touch_move(self, touch):
+        if self.pressedLeft is not None:
+            x0, y0,x1,y1, posX, posY = self.pressedLeft
+            moveScale = 0.7
+            moveScale *= (x1-x0)/self.rangeX
+            dx = touch.x - posX
+            dy = touch.y - posY
+            dx *= -moveScale
+            dy *= moveScale
+            self.ax.set_xlim([x0+dx,x1+dx])
+            self.ax.set_ylim([y0 + dy, y1 + dy])
+            self.fig.canvas.draw()
+
+    def on_touch_down(self, touch):
         posX = touch.pos[0]
         posY = touch.pos[1]
         if self.collide_point(posX, posY):
@@ -109,7 +130,13 @@ class MySplitter(Splitter):
                 self.zoom(posX, posY, self.ax, self.fig, "scrollup")
             elif "scrolldown" in touch.button:
                 self.zoom(posX, posY, self.ax, self.fig, "scrolldown")
-            
+            elif 'left' in touch.button:
+                if self.data is not None:
+                    cur_xlim = self.ax.get_xlim()
+                    cur_ylim = self.ax.get_ylim()
+                    self.pressedLeft = cur_xlim[0], cur_ylim[0], cur_xlim[1], cur_ylim[1], posX, posY
+            super(MySplitter,self).on_touch_down(touch)
+
 
     def zoom(self,posX,posY,ax,fig,event, baseScale = 1.5):
         cur_xlim = ax.get_xlim()
