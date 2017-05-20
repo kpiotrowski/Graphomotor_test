@@ -1,7 +1,7 @@
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import ttk
@@ -172,6 +172,8 @@ class Graph(Figure):
     def __init__(self, pane, image=None, figsize=(100,100)):
         Figure.__init__(self, figsize=figsize)
         self.canvas = FigureCanvasTkAgg(self, pane)
+        toolbar = NavigationToolbar2TkAgg(self.canvas, pane)
+        toolbar.update()
         self.plot = self.add_subplot(1, 1, 1)
         self.changePlot(image)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)

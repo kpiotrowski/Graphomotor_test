@@ -1,14 +1,14 @@
 from __future__ import print_function
-import graphomotor
-from matplotlib import pyplot as plt
-from matplotlib.colors import hsv_to_rgb
-import gui
-
+# import graphomotor
+# from matplotlib import pyplot as plt
+# from matplotlib.colors import hsv_to_rgb
+import gui.mainMenu as gui
 
 
 if __name__ == "__main__":
-    app = gui.MainGui()
-    app.mainloop()
+    gui.MyAppGUI().run()
+    # app = gui.MainGui()
+    # app.mainloop()
     #P1
     # files = [
     #     "dane/33100000000 (M)/01_33100000000_10MLLP.mtb",   #0
