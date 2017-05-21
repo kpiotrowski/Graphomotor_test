@@ -69,10 +69,11 @@ def read(filename):
         "pos_x": (min, max),
         "pos_y": (min, max),
         "line_len": float,
+        "time" : int,
         "image": Image in hsv,
         "figures": [                #TODO
             {
-                "type": string,     #TODO
+                "type": string,
                 "pos_x": [min, max],
                 "pos_y": [min, max],
                 "max_force": int,
@@ -84,6 +85,7 @@ def read(filename):
                 "line_breaks": int,
                 "avg_width": int,
                 "avg_height": int,
+                "time": int,
                 "diff": float       #TODO
             },
             ...
@@ -175,6 +177,7 @@ def set_test_details(gdata, data, speed_points=100):
     gdata['avg_force'] = avg_f[0] / avg_f[1]
     gdata['avg_width'] = avg_w / avg_f[1]
     gdata['avg_height'] = avg_h / avg_f[1]
+    gdata['time'] = len(data)
     return gdata
 
 
@@ -366,24 +369,36 @@ def find_figures(gdata):
         if 'type' in x:
             x = set_test_details(x, x["data"])
         del x["data"]
-    pprint.pprint(groups)
-    print(len(groups))
+
     gdata['figures'] = groups
+
     return gdata
 
 
-def create_image(gdata, scale=30, show_speed=True, show_figure_box=False):
+def save_metrics(gdata, file_name):
+    data = gdata['data']
+    gdata['data'] = "NOT VISIBLE"
+    file = open(file_name, "w")
+    file.write(pprint.pformat(gdata))
+    gdata['data'] = data
+    file.close()
+
+def create_image(gdata, scale=30, show_speed=True, show_figure_box=False, show_width=False, show_height=False, max_force=None, max_speed=None):
     """
     Tworzy obraz w przestrzeni hsv przedstawiający przegieb testu grafomotorycznego.
     Wsp scale oznacza jka bardzo obraz ma być przeskalowany w stosunku do rozmiaru danych wejściowych
     Siła nacisku reprezentowana jest jako barwa (H): zielony - zółty - czerwony : słaba - średnia - wysoka
     Prędkość rysowania reprezentowana jest jako (V): większa wartość to większa prędkość
-    Kąty rysowania reprezentowane jako wektory wychodzące                                                         #TODO
+    Kąty rysowania są również reprezentowane przez barwę.
     :param gdata: dict
     :param scale: int - pomniejszenie jakie zastosować (wejściowe dane mają bardzo dużą rozdzielczość)
     :param show_speed: bool
     :return: dict
     """
+    if max_force is None:
+        max_force = gdata['max_force']
+    if max_speed is None:
+        max_speed = gdata['max_speed']
     # TODO draw vectors
     w, h = int((gdata['pos_x'][1]) / scale) + 2, int((gdata['pos_y'][1]) / scale) + 2
     data = np.zeros((w, h, 3), dtype=np.float)
@@ -402,9 +417,14 @@ def create_image(gdata, scale=30, show_speed=True, show_figure_box=False):
             for x in xt:
                 for y in yt:
                     if 'speed' in i: cur_speed = i['speed']
-                    color = 0.350 - (0.350 * i['force'] / gdata['max_force'])
+                    color = 0.350 - (0.350 * i['force'] / max_force)
+                    if show_width:
+                        color = 0.125+(0.75*i['width']/1800)
+                    elif show_height:
+                        color = 0.125+(0.75*i['height']/1800)
+
                     if show_speed:
-                        data[x, y] = [color, 1, cur_speed / gdata['max_speed']]
+                        data[x, y] = [color, 1, cur_speed / max_speed]
                     else:
                         data[x, y] = [color, 1, 1]
 
