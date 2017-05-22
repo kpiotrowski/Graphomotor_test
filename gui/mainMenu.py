@@ -165,10 +165,8 @@ class MyPopUp(Popup):
         newLayout.add_widget(MyCheckBoxLayout(self.currentWidget,"Show height","showheight",0.5,group="image"))
 
     def changeView(self):
-        grid = mainScreenManager.mainScreen.grid
-        mainScreenManager.mainScreen.grid.viewImage = not mainScreenManager.mainScreen.grid.viewImage
-        for split in grid.spliters:
-            split.changeView(mainScreenManager.mainScreen.grid.viewImage)
+        self.currentWidget.viewImage = not self.currentWidget.viewImage
+        self.currentWidget.changeView()
         self.dismiss()
 
     def addSplitter(self):
@@ -242,17 +240,18 @@ class MySplitter(Splitter):
             "showheight": False,
             "showPress": True
         }
-        self.changeView(viewImage,empty=True)
+        self.viewImage = True
+        self.changeView(empty=True)
         self.bind(size=lambda x,y: self.posGrid())
         # self.showGrid()
 
     def posGrid(self):
         self.grid.pos = (self.width *0.1,0.0)
 
-    def changeView(self,viewImage,empty=False):
+    def changeView(self,empty=False):
         if empty is not True:
             self.clear_widgets()
-        if viewImage:
+        if self.viewImage:
             self.add_widget(self.fig.canvas)
         else:
             self.add_widget(self.scrollInfo)
@@ -332,8 +331,9 @@ class MySplitter(Splitter):
 
 
     def on_touch_up(self, touch):
-        self.pressedLeft = None
-        self.fig.canvas.draw()
+        if self.viewImage:
+            self.pressedLeft = None
+            self.fig.canvas.draw()
 
     def on_touch_move(self, touch):
         if self.pressedLeft is not None:
@@ -353,24 +353,21 @@ class MySplitter(Splitter):
         posY = touch.pos[1]
         if self.collide_point(posX, posY):
             self.focus = False
-            if 'right' in touch.button and mainScreenManager.ctrl:
-                if self.checkFig(posX,posY):
-                    info = InfoPopUp(posX,posY,self,title="Info",size_hint=(None,None))
-                    info.open()
-            elif 'right' in touch.button:
+            if 'right' in touch.button:
                 menu = MyPopUp(posX, posY, self, title="Plot", size_hint=(None, None))
                 menu.open()
-            elif "scrollup" in touch.button:
-                if self.data is not None:
-                    self.zoom(posX, posY, self.ax, self.fig, "scrollup")
-            elif "scrolldown" in touch.button:
-                if self.data is not None:
-                    self.zoom(posX, posY, self.ax, self.fig, "scrolldown")
-            elif 'left' in touch.button:
-                if self.data is not None:
-                    cur_xlim = self.ax.get_xlim()
-                    cur_ylim = self.ax.get_ylim()
-                    self.pressedLeft = cur_xlim[0], cur_ylim[0], cur_xlim[1], cur_ylim[1], posX, posY
+            if self.viewImage:
+                if "scrollup" in touch.button:
+                    if self.data is not None:
+                        self.zoom(posX, posY, self.ax, self.fig, "scrollup")
+                elif "scrolldown" in touch.button:
+                    if self.data is not None:
+                        self.zoom(posX, posY, self.ax, self.fig, "scrolldown")
+                elif 'left' in touch.button:
+                    if self.data is not None:
+                        cur_xlim = self.ax.get_xlim()
+                        cur_ylim = self.ax.get_ylim()
+                        self.pressedLeft = cur_xlim[0], cur_ylim[0], cur_xlim[1], cur_ylim[1], posX, posY
             super(MySplitter,self).on_touch_down(touch)
 
     def checkFig(self,posX,posY):
