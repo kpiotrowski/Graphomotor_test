@@ -4,8 +4,6 @@ from kivy.uix.boxlayout  import BoxLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.floatlayout import FloatLayout
 
-import kivy.input.motionevent
-
 from kivy.core.window import Window
 from kivy.uix.button import Button
 from kivy.uix.widget import Widget
@@ -41,61 +39,292 @@ from matplotlib import pyplot as plt
 from kivy.properties import OptionProperty, NumericProperty, ObjectProperty,\
     ListProperty
 
+
+from libs.garden.filebrowser import FileBrowser
+from os.path import sep, expanduser, isdir, dirname, exists
+import platform
+from kivy.uix.screenmanager import ScreenManager, Screen, TransitionBase, SlideTransition
+from kivy.graphics.context_instructions import Color
+from kivy.uix.checkbox import CheckBox
+from kivy.uix.relativelayout import RelativeLayout
+from kivy.uix.scrollview import ScrollView
+
+class MyFileBrowser(FileBrowser):
+    def __init__(self,**kwargs):
+        super(MyFileBrowser,self).__init__(**kwargs)
+        if not platform.system() == 'Linux':
+            user_path = dirname(expanduser('.'))
+        else:
+            user_path = expanduser('.')
+        if isdir(user_path):
+            self.path = user_path
+            self.select_string = "Load"
+            self.favorites =[(user_path, 'Project')]
+        self.currentWidget = None
+        self.bind(
+                    on_success=self.loadFile,
+                    on_canceled=self._fbrowser_canceled)
+
+    def loadFile(self,instance):
+        if exists(instance.filename):
+            extension = instance.filename.split('.')[-1]
+            if extension == "mtb":
+                self.currentWidget.data = graphomotor.read(instance.filename)
+                self.currentWidget.data = graphomotor.find_figures(self.currentWidget.data)
+                self.currentWidget.showImage()
+                self.currentWidget.showGrid()
+                self.goBack()
+
+    def saveFile(self,instance):
+        directory = ""
+        folders = instance.filename.split(sep)
+        if len(folders) > 2:
+            for fd in folders[:-1]:
+                directory += fd + sep
+            if isdir(directory):
+                graphomotor.save_metrics(self.currentWidget.data,instance.filename)
+                self.goBack()
+
+    def goBack(self):
+        mainScreenManager.current = "main"
+
+    def _fbrowser_canceled(self,instance):
+        return self.goBack()
+
+
+class InfoPopUp(Popup):
+    def __init__(self, posX, posY, currentWidget, **kwargs):
+        super(InfoPopUp, self).__init__(**kwargs)
+        self.pos_hint = {'x': posX / Window.width, 'y': (posY - self.height) / Window.height}
+        self.add_widget(Label(text="test"))
+
+
+class MyCheckBoxLayout(RelativeLayout):
+    def __init__(self, currentWidget,name, var, center_x,group = None, **kwargs):
+        super(MyCheckBoxLayout, self).__init__(**kwargs)
+        self.currentWidget = currentWidget
+        showSpeed = CheckBox(pos_hint= {'center_x': 0.1, 'center_y': 0.5})
+        showSpeed.active = self.currentWidget.imageParam[var]
+        if group is not None:
+            showSpeed.group = group
+            showSpeed.bind(active=lambda c,v:self.toggleButton(c, v, var))
+            showSpeed.allow_no_selection = False
+        else:
+            showSpeed.bind(active=lambda c,v:self.checkBoxChange(c,v,var))
+        self.add_widget(showSpeed)
+        checkboxLabel = Label(text=name,pos_hint= {'center_x': center_x, 'center_y': 0.5})
+        self.add_widget(checkboxLabel)
+
+
+    def checkBoxChange(self, checkbox, value, var):
+        self.currentWidget.imageParam[var] = value
+        self.currentWidget.showImage()
+
+
+    def toggleButton(self, checkbox, value, var):
+        if value == False:
+            return
+        self.currentWidget.imageParam["showwidth"] = False
+        self.currentWidget.imageParam["showheight"] = False
+        self.currentWidget.imageParam["showPress"] = False
+        self.checkBoxChange(checkbox,value,var)
+
+
+
+
 class MyPopUp(Popup):
     def __init__ (self,posX, posY, currentWidget,**kwargs):
         super(MyPopUp,self).__init__(**kwargs)
-        showFile = Button(text="Load image",on_press=lambda btn:self.showImage())
-        self.add_widget(showFile)
-        self.width = 150
         self.currentWidget = currentWidget
+        newLayout = BoxLayout(orientation='vertical')
+        self.width = 180
+        self.height = 290
+        changeView = Button(text="Change view")
+        changeView.bind(on_press=lambda btn:self.changeView())
+        newLayout.add_widget(changeView)
+        if len(mainScreenManager.mainScreen.grid.spliters) > 1:
+            removeSplitt = Button(text="Remove view", on_press=lambda btn:self.removeSplitter())
+            newLayout.add_widget(removeSplitt)
+        else:
+            addSplitt = Button(text="Add view",on_press=lambda btn: self.addSplitter())
+            newLayout.add_widget(addSplitt)
+        self.add_widget(newLayout)
+        showFile = Button(text="Load test", on_press=lambda btn:self.loadFiles())
+        newLayout.add_widget(showFile)
+        if self.currentWidget.data is not None:
+            saveFile = Button(text="Save test", on_press=lambda btn:self.saveFiles())
+            newLayout.add_widget(saveFile)
+            self.height = self.height + 40
         self.pos_hint = {'x': posX / Window.width, 'y': (posY - self.height) / Window.height}
+        resetButton = Button(text="Reset", on_press=lambda btn: self.currentWidget.showImage())
+        newLayout.add_widget(resetButton)
+        newLayout.add_widget(MyCheckBoxLayout(self.currentWidget,"Show speed","showspeed",0.5))
+        newLayout.add_widget(MyCheckBoxLayout(self.currentWidget,"Show boxes", "showboxes", 0.5))
+        newLayout.add_widget(MyCheckBoxLayout(self.currentWidget,"Show pressure","showPress",0.6,group="image"))
+        newLayout.add_widget(MyCheckBoxLayout(self.currentWidget,"Show width","showwidth",0.5,group="image"))
+        newLayout.add_widget(MyCheckBoxLayout(self.currentWidget,"Show height","showheight",0.5,group="image"))
 
-    def showImage(self):
-        # if (self.currentWidget.data is None):
-        #     return
+    def changeView(self):
+        grid = mainScreenManager.mainScreen.grid
+        mainScreenManager.mainScreen.grid.viewImage = not mainScreenManager.mainScreen.grid.viewImage
+        for split in grid.spliters:
+            split.changeView(mainScreenManager.mainScreen.grid.viewImage)
+        self.dismiss()
 
-        self.currentWidget.data = graphomotor.read("dane/40080000000 (M)/03_40080000000_11MRLP.mtb")
-        self.currentWidget.data = graphomotor.find_figures(self.currentWidget.data)
-        self.currentWidget.data = graphomotor.create_image(self.currentWidget.data, show_speed=True,
-                                             show_figure_box=True)
-        image = hsv_to_rgb(self.currentWidget.data["image"])
-        self.currentWidget.showImage(image)
+    def addSplitter(self):
+        mainScreenManager.mainScreen.grid.addSplitter(True)
+        mainScreenManager.mainScreen.grid.resizeSplitters(Window.size[0])
+        self.dismiss()
+
+    def removeSplitter(self):
+        for split in mainScreenManager.mainScreen.grid.spliters:
+            if split == self.currentWidget:
+                mainScreenManager.mainScreen.grid.removeSplitter(self.currentWidget)
+                self.dismiss()
+                break
+        mainScreenManager.mainScreen.grid.spliters[0].strip_size = 0
+        mainScreenManager.mainScreen.grid.resizeSplitters(Window.size[0])
+
+    def swapScreen(self):
+        mainScreenManager.fileScreen.filesBrow.currentWidget = self.currentWidget
+        mainScreenManager.current = "files"
+
+    def saveFiles(self):
+        if self.currentWidget.data is not None:
+            mainScreenManager.fileScreen.filesBrow.select_string = "Save"
+            mainScreenManager.fileScreen.filesBrow.bind(on_success=mainScreenManager.fileScreen.filesBrow.saveFile)
+            self.swapScreen()
+        self.dismiss()
+
+    def loadFiles(self):
+        mainScreenManager.fileScreen.filesBrow.select_string = "Load"
+        mainScreenManager.fileScreen.filesBrow.bind(on_success=mainScreenManager.fileScreen.filesBrow.loadFile)
+        self.swapScreen()
         self.dismiss()
 
 
-class MyScatterLayout(ScatterLayout):
-    def __init__(self,**kwargs):
-        super(MyScatterLayout,self).__init__(**kwargs)
-        self.fig, self.ax = plt.subplots()
-        self.fig.frameon = False
-        self.ax.axis('off')
-        self.add_widget(self.fig.canvas)
-        self.keep_within_parent = True
-        self.rescale_with_parent = True
+class GridLabel(Label):
+    def __init__(self,background=None, **kwargs):
+        super(GridLabel, self).__init__(**kwargs)
+        if background is None:
+            self.background = [0.0,0.0,0.0,1.0]
+        else:
+            self.background = background
 
-
-class MainGrid(BoxLayout):
-    def __init__ (self,**kwargs):
-        super(MainGrid,self).__init__(**kwargs)
-        self.minimum_width = 800
-        self.minimum_height = 600
-
-
+    def on_size(self, *args):
+        self.canvas.before.clear()
+        r, g, b, a = self.background
+        with self.canvas.before:
+            Color(r, g, b, a)
+            Rectangle(pos=self.pos, size=self.size)
 
 
 class MySplitter(Splitter):
-    def __init__ (self,**kwargs):
+    def __init__ (self,viewImage=True,min=0,showStrip = True,**kwargs):
         super(MySplitter,self).__init__(**kwargs)
+        # self.max_size = Window.width - min
+        self.min_size = min
+        self.keep_within_parent = True
+        self.rescale_with_parent = True
+        if not showStrip:
+            self.strip_size = 0
         self.data = None
+        self.setCanvas()
+        self.setGrid()
+        self.pressedLeft = None
+        self.rangeX = 1
+        self.scale = 30
+        self.showSpeed = True
+        self.imageParam = {
+            "showspeed": False,
+            "showboxes": False,
+            "showwidth": False,
+            "showheight": False,
+            "showPress": True
+        }
+        self.changeView(viewImage,empty=True)
+        self.bind(size=lambda x,y: self.posGrid())
+        # self.showGrid()
+
+    def posGrid(self):
+        self.grid.pos = (self.width *0.1,0.0)
+
+    def changeView(self,viewImage,empty=False):
+        if empty is not True:
+            self.clear_widgets()
+        if viewImage:
+            self.add_widget(self.fig.canvas)
+        else:
+            self.add_widget(self.scrollInfo)
+
+    def setCanvas(self):
+        print(self.width)
         self.fig, self.ax = plt.subplots()
         self.fig.frameon = False
         self.ax.axis('off')
-        self.add_widget(self.fig.canvas)
-        self.pressedLeft = None
-        self.rangeX = 1
+        # self.add_widget(self.fig.canvas)
+
+    def setGrid(self):
+        self.scrollInfo = ScrollView(do_scroll_x=True, do_scroll_y=True)
+        self.grid = BoxLayout(orientation="vertical",size_hint=(1.0,None))
+        self.grid.padding = [20,10,20,5]
+        # self.grid = GridLayout(cols=2,rows=10,size_hint=(1.0,None))
+        self.scrollInfo.add_widget(self.grid)
 
 
-    def showImage(self,image):
+    def showGrid(self):
+        self.grid.height = 5000
+        # self.addText(["test1","test2"])
+        self.addText([self.data["file_name"]])
+        self.addText(["Gender:",self.data["gender"]])
+        self.addInfo(self.data)
+        for fig in self.data["figures"]:
+            self.addText([fig["type"]])
+            self.addInfo(fig)
+
+    def addInfo(self,data):
+        self.addText(["Maximum force:", "{0:.3f}".format(data["max_force"])])
+        self.addText(["Minimum force:", "{0:.3f}".format(data["min_force"])])
+        self.addText(["Average force:", "{0:.3f}".format(data["avg_force"])])
+        self.addText(["Maximum speed:", "{0:.3f}".format(data["max_speed"])])
+        self.addText(["Average speed:", "{0:.3f}".format(data["avg_speed"])])
+        self.addText(["Line breaks:", "{0:.3f}".format(data["line_breaks"])])
+        self.addText(["Average width:", "{0:.3f}".format(data["avg_width"])])
+        self.addText(["Average height:", "{0:.3f}".format(data["avg_height"])])
+        self.addText(["Average height:", "{0:.0f}".format(data["time"])])
+
+    def addText(self,labels):
+        box = BoxLayout(spacing=5)
+        gray = 0.2
+        if len(labels) > 1:
+            box.padding = [0,0,0,5]
+        else:
+            box.padding = [0,15,0,3]
+            gray = 0.7
+        # box = GridLayout(cols=len+(labels))
+        for lab in labels:
+            # lb = GridLabel(text=lab,background=[gray,gray,gray,1.0],pos_hint={'x':.1,'y':.1},size_hint=(0.8,0.8))
+            lb = GridLabel(text=lab,background=[gray,gray,gray,1.0])
+            # box.add_widget(lb)
+            box.add_widget(lb)
+            gray +=0.2
+        self.grid.add_widget(box)
+
+    def showImage(self):
+        if self.data is None:
+            return
+        max_force = 0
+        max_speed = 0
+        grid = mainScreenManager.mainScreen.grid
+        for split in grid.spliters:
+            max_force = max(max_force,split.data['max_force'])
+            max_speed = max(max_speed,split.data['max_speed'])
+        self.data = graphomotor.create_image(self.data,scale=self.scale, show_speed=self.imageParam["showspeed"],
+                                             show_figure_box=self.imageParam["showboxes"],show_width=self.imageParam["showwidth"],show_height=self.imageParam["showheight"]
+                                             ,max_speed=max_speed,max_force=max_force)
+        image = hsv_to_rgb(self.data["image"])
+        self.ax.cla()
+        self.ax.axis('off')
         self.ax.imshow(image)
         cur_xlim = self.ax.get_xlim()
         self.rangeX = cur_xlim[1]-cur_xlim[0]
@@ -123,13 +352,20 @@ class MySplitter(Splitter):
         posX = touch.pos[0]
         posY = touch.pos[1]
         if self.collide_point(posX, posY):
-            if 'right' in touch.button:
+            self.focus = False
+            if 'right' in touch.button and mainScreenManager.ctrl:
+                if self.checkFig(posX,posY):
+                    info = InfoPopUp(posX,posY,self,title="Info",size_hint=(None,None))
+                    info.open()
+            elif 'right' in touch.button:
                 menu = MyPopUp(posX, posY, self, title="Plot", size_hint=(None, None))
                 menu.open()
             elif "scrollup" in touch.button:
-                self.zoom(posX, posY, self.ax, self.fig, "scrollup")
+                if self.data is not None:
+                    self.zoom(posX, posY, self.ax, self.fig, "scrollup")
             elif "scrolldown" in touch.button:
-                self.zoom(posX, posY, self.ax, self.fig, "scrolldown")
+                if self.data is not None:
+                    self.zoom(posX, posY, self.ax, self.fig, "scrolldown")
             elif 'left' in touch.button:
                 if self.data is not None:
                     cur_xlim = self.ax.get_xlim()
@@ -137,6 +373,36 @@ class MySplitter(Splitter):
                     self.pressedLeft = cur_xlim[0], cur_ylim[0], cur_xlim[1], cur_ylim[1], posX, posY
             super(MySplitter,self).on_touch_down(touch)
 
+    def checkFig(self,posX,posY):
+        if self.data is None:
+            return False
+        cur_limx = self.ax.get_xlim()
+        cur_limy = self.ax.get_ylim()
+        # print([self.data['image'].shape[0],cur_limx[1]-cur_limx[0]])
+        # print([self.data['image'].shape[1], cur_limy[1] - cur_limy[0]])
+        x = posX + cur_limx[0]
+        y = posY + cur_limy[1]
+        y *= self.scale
+        x *= self.scale
+        print("x,y:")
+        print([x,y])
+        print("\n")
+        for fig in self.data["figures"]:
+            figX0 = fig['pos_x'][0]
+            figX1 = fig['pos_x'][1]
+            figY0 = fig['pos_y'][0]
+            figY1 = fig['pos_y'][1]
+            # print([x,fig['pos_x'][1]])
+            print(fig['type'])
+            print([fig['pos_x'][0], fig['pos_x'][1]])
+            print([fig['pos_y'][0],fig['pos_y'][1]])
+            print("\n")
+            if figX0 <= x <= figX1 and figY0 <= y <= figY1:
+                print("\n")
+                print(fig['type'])
+                print("\n")
+                return True
+        return False
 
     def zoom(self,posX,posY,ax,fig,event, baseScale = 1.5):
         cur_xlim = ax.get_xlim()
@@ -166,12 +432,101 @@ class MySplitter(Splitter):
         fig.canvas.draw() # force re-draw
 
 
+class MainGrid(BoxLayout):
+    def __init__ (self,**kwargs):
+        super(MainGrid,self).__init__(**kwargs)
+        self.min_view_size = 100
+        self.spliters = []
+        self.viewImage = False
+        self.addSplitter(False)
+
+
+    def addSplitter(self,showStrip):
+        split = MySplitter(viewImage=self.viewImage, min=self.min_view_size, showStrip=showStrip)
+        self.spliters.append(split)
+        self.add_widget(split)
+        for sp in self.spliters:
+            sp.size_hint = (0.5,1.0)
+
+
+    def removeSplitter(self,split):
+        self.spliters.remove(split)
+        self.remove_widget(split)
+        self.spliters[0].size_hint = (1.0,1.0)
+
+
+    def resizeSplitters(self,width):
+        for split in self.spliters:
+            if len(self.spliters) > 1:
+                split.max_size = width - self.min_view_size
+                split.min_size = self.min_view_size
+            else:
+                split.max_size = width
+                split.min_size = 0
+
+
+class MainScreen(Screen):
+    def __init__(self,**kwargs):
+        super(MainScreen,self).__init__(**kwargs)
+        self.grid = MainGrid()
+        self.add_widget(self.grid)
+
+
+class FileScreen(Screen):
+    def __init__(self,**kwargs):
+        super(FileScreen,self).__init__(**kwargs)
+        self.filesBrow = MyFileBrowser()
+        self.add_widget(self.filesBrow)
+
+
+
+class MyScreenManager(ScreenManager):
+    def __init__(self,**kwargs):
+        super(MyScreenManager,self).__init__(**kwargs)
+        self.mainScreen = MainScreen(name="main")
+        self.fileScreen = FileScreen(name="files")
+        self.add_widget(self.mainScreen)
+        self.add_widget(self.fileScreen)
+        self.current = "main"
+        self.minimum_width = 800
+        self.minimum_height = 600
+
+        self.ctrl = False
+        self._keyboard = Window.request_keyboard(None, self)
+        self._keyboard.bind(on_key_down=self.on_key_down)
+        self._keyboard.bind(on_key_up=self.on_key_up)
+
+
+    def keyboard_closed(self):
+        self._keyboard.unbind(on_key_down=self.on_key_down)
+        self._keyboard.unbind(on_key_up=self.on_key_up)
+        self._keyboard = None
+
+
+    def on_key_down(self, keyboard, keycode, text, modifiers):
+        if keycode[1] == "lctrl" or keycode[1] == "rctrl":
+            self.ctrl = True
+
+
+    def on_key_up(self, keyboard, keycode):
+        if keycode[1] == "lctrl" or keycode[1] == "rctrl":
+            self.ctrl = False
+
+
+mainScreenManager = MyScreenManager()
+
+
 class MyAppGUI(App):
 
     def build(self):
+        def windowResize(window, width, height):
+            mainScreenManager.mainScreen.grid.resizeSplitters(width)
+
         self.init()
+        Window.bind(on_resize=windowResize)
         # return MainGrid(cols=2,rows=1)
-        return MainGrid()
+        return mainScreenManager
+        # return MainGrid()
 
     def init(self):
         Config.set('input', 'mouse', 'mouse,multitouch_on_demand')

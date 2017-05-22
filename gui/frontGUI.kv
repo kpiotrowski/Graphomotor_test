@@ -1,20 +1,4 @@
-<MainGrid>:
-    id: all
-    min_view_size: 100
-
-    MySplitter:
-        id: Mysplitter1
-        max_size: self.parent.width - all.min_view_size
-        min_size: all.min_view_size
-        keep_within_parent: True
-        rescale_with_parent: True
-        strip_size: '0pt'
-
-
-
-    MySplitter:
-        id: Mysplitter2
-        max_size: self.parent.width - all.min_view_size
-        min_size: all.min_view_size
-        keep_within_parent: True
-        rescale_with_parent: True
+<GridLabel>:
+    text_size: self.size
+    halign: 'center'
+    valign: 'middle'
