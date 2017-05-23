@@ -61,6 +61,7 @@ class MyFileBrowser(FileBrowser):
             self.select_string = "Load"
             self.favorites =[(user_path, 'Project')]
         self.currentWidget = None
+        self.load = True
         self.bind(
                     on_success=self.loadFile,
                     on_canceled=self._fbrowser_canceled)
@@ -74,6 +75,12 @@ class MyFileBrowser(FileBrowser):
                 self.currentWidget.showImage()
                 self.currentWidget.showGrid()
                 self.goBack()
+            # elif extension == "gmt":
+            #     with open(instance.filename) as dict:
+            #         self.currentWidget.data = ast.literal_eval(dict.read())
+            #     self.currentWidget.showImage()
+            #     self.currentWidget.showGrid()
+            #     self.goBack()
 
     def saveFile(self,instance):
         directory = ""
@@ -190,13 +197,19 @@ class MyPopUp(Popup):
     def saveFiles(self):
         if self.currentWidget.data is not None:
             mainScreenManager.fileScreen.filesBrow.select_string = "Save"
-            mainScreenManager.fileScreen.filesBrow.bind(on_success=mainScreenManager.fileScreen.filesBrow.saveFile)
+            if mainScreenManager.fileScreen.filesBrow.load:
+                mainScreenManager.fileScreen.filesBrow.unbind(on_success=mainScreenManager.fileScreen.filesBrow.loadFile)
+                mainScreenManager.fileScreen.filesBrow.bind(on_success=mainScreenManager.fileScreen.filesBrow.saveFile)
+            mainScreenManager.fileScreen.filesBrow.load = False
             self.swapScreen()
         self.dismiss()
 
     def loadFiles(self):
         mainScreenManager.fileScreen.filesBrow.select_string = "Load"
-        mainScreenManager.fileScreen.filesBrow.bind(on_success=mainScreenManager.fileScreen.filesBrow.loadFile)
+        if mainScreenManager.fileScreen.filesBrow.load:
+            mainScreenManager.fileScreen.filesBrow.unbind(on_success=mainScreenManager.fileScreen.filesBrow.saveFile)
+            mainScreenManager.fileScreen.filesBrow.bind(on_success=mainScreenManager.fileScreen.filesBrow.loadFile)
+        mainScreenManager.fileScreen.filesBrow.load = True
         self.swapScreen()
         self.dismiss()
 
@@ -272,6 +285,8 @@ class MySplitter(Splitter):
 
 
     def showGrid(self):
+        self.grid.add_widget(Widget())
+        self.grid.clear_widgets()
         self.grid.height = 5000
         # self.addText(["test1","test2"])
         self.addText([self.data["file_name"]])
@@ -316,8 +331,14 @@ class MySplitter(Splitter):
         max_speed = 0
         grid = mainScreenManager.mainScreen.grid
         for split in grid.spliters:
-            max_force = max(max_force,split.data['max_force'])
-            max_speed = max(max_speed,split.data['max_speed'])
+            if 'max_force' in split.data:
+                max_force = max(max_force,split.data['max_force'])
+            if 'max_speed' in split.data:
+                max_speed = max(max_speed,split.data['max_speed'])
+        if max_force == 0:
+            max_force = None
+        if max_speed == 0:
+            max_speed = None
         self.data = graphomotor.create_image(self.data,scale=self.scale, show_speed=self.imageParam["showspeed"],
                                              show_figure_box=self.imageParam["showboxes"],show_width=self.imageParam["showwidth"],show_height=self.imageParam["showheight"]
                                              ,max_speed=max_speed,max_force=max_force)
