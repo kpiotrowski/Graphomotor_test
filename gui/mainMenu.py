@@ -163,13 +163,17 @@ class MyPopUp(Popup):
             newLayout.add_widget(saveFile)
             self.height = self.height + 40
         self.pos_hint = {'x': posX / Window.width, 'y': (posY - self.height) / Window.height}
-        resetButton = Button(text="Reset", on_press=lambda btn: self.currentWidget.showImage())
+        resetButton = Button(text="Reset", on_press=lambda btn: self.resetImage())
         newLayout.add_widget(resetButton)
         newLayout.add_widget(MyCheckBoxLayout(self.currentWidget,"Show speed","showspeed",0.5))
         newLayout.add_widget(MyCheckBoxLayout(self.currentWidget,"Show boxes", "showboxes", 0.5))
         newLayout.add_widget(MyCheckBoxLayout(self.currentWidget,"Show pressure","showPress",0.6,group="image"))
         newLayout.add_widget(MyCheckBoxLayout(self.currentWidget,"Show width","showwidth",0.5,group="image"))
         newLayout.add_widget(MyCheckBoxLayout(self.currentWidget,"Show height","showheight",0.5,group="image"))
+
+    def resetImage(self):
+        self.currentWidget.showImage()
+        self.dismiss()
 
     def changeView(self):
         self.currentWidget.viewImage = not self.currentWidget.viewImage
@@ -331,6 +335,10 @@ class MySplitter(Splitter):
         max_speed = 0
         grid = mainScreenManager.mainScreen.grid
         for split in grid.spliters:
+            if split.data is None:
+                max_force = None
+                max_speed = None
+                break
             if 'max_force' in split.data:
                 max_force = max(max_force,split.data['max_force'])
             if 'max_speed' in split.data:
